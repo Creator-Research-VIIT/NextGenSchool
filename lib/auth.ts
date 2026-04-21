@@ -5,56 +5,9 @@ import { sql, db } from './db'
 import type { UserRole } from './types'
 import { authConfig } from './auth.config'
 
-// Initialize database on first import
-function initializeDatabase() {
-  try {
-    console.log("🗄️ Initializing database...")
-    db.pragma('foreign_keys = ON')
+// Database initialization is now handled via the /api/migrate route or manual scripts
+// This avoids issues with native bindings and provides better control over migrations.
 
-    db.exec(`
-      CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        email TEXT UNIQUE NOT NULL,
-        name TEXT NOT NULL,
-        password_hash TEXT NOT NULL,
-        role TEXT NOT NULL DEFAULT 'student',
-        is_approved BOOLEAN DEFAULT false,
-        institution_id INTEGER,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-      )
-    `)
-
-    const stmt = db.prepare('SELECT COUNT(*) as count FROM users WHERE email = ?')
-    const result = stmt.get('admin@nextgenschool.com') as any
-
-    if (result.count === 0) {
-      console.log("🌱 Seeding demo users...")
-      const demoUsers = [
-        { email: 'admin@nextgenschool.com', name: 'Admin User', password: 'demo123', role: 'admin' },
-        { email: 'teacher@nextgenschool.com', name: 'Demo Teacher', password: 'demo123', role: 'teacher' },
-        { email: 'student@nextgenschool.com', name: 'Demo Student', password: 'demo123', role: 'student' },
-      ]
-
-      const insertStmt = db.prepare(`
-        INSERT INTO users (email, name, password_hash, role, is_approved)
-        VALUES (?, ?, ?, ?, true)
-      `)
-
-      for (const user of demoUsers) {
-        const passwordHash = hashSync(user.password, 10)
-        insertStmt.run(user.email, user.name, passwordHash, user.role)
-      }
-    }
-  } catch (error) {
-    console.error('❌ Database initialization error:', error)
-  }
-}
-
-// Only initialize if we're not in the Edge runtime
-if (process.env.NEXT_RUNTIME !== 'edge') {
-  initializeDatabase()
-}
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   ...authConfig,
